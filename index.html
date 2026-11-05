@@ -942,7 +942,7 @@ function viewCasas(){
     const cs=S.casas.filter(c=>c.condominio===cn);
     h+=`<div class="section"><div class="section-head"><h2>${esc(cn)}</h2><span class="row" style="gap:12px;align-items:center"><span class="muted small num">${cs.length} casas</span>${adm?`<button class="link small" data-act="editcondo" data-n="${esc(cn)}">Renombrar</button>${cs.length?"":`<button class="link small" style="color:var(--danger)" data-act="delcondo" data-n="${esc(cn)}">Eliminar</button>`}`:""}</span></div>`;
     if(!cs.length)h+=`<div class="card muted small">Aún no hay casas registradas.</div>`;
-    else h+=`<div class="card" style="padding:4px 18px">${cs.map(c=>{const n=S.tareas.filter(t=>t.casaId===c.id&&t.estado!=="cancelada").length;return `<div class="list-item"><span class="dd-ico" style="width:38px;height:38px;border-radius:10px;font-weight:800;font-size:13px">${esc(c.bloque||"–")}</span><span style="flex:1;min-width:0"><b>${c.bloque?"Bloque "+esc(c.bloque)+" · ":""}Casa ${esc(c.numero)}</b>${c.demo?' <span class="muted small">(ejemplo)</span>':""}<br><span class="muted small num">${n} ${n===1?"trabajo":"trabajos"}</span></span>${isAdmin()&&!readOnly?`<button class="btn btn-ghost btn-sm" data-act="editcasa" data-id="${c.id}">Editar</button><button class="btn btn-danger btn-sm" data-act="delcasa" data-id="${c.id}">Eliminar</button>`:""}</div>`}).join("")}</div>`;
+    else h+=`<div class="card" style="padding:4px 18px">${cs.map(c=>{const n=S.tareas.filter(t=>t.casaId===c.id&&t.estado!=="cancelada").length;return `<div class="list-item"><span class="dd-ico" style="width:38px;height:38px;border-radius:10px;font-weight:800;font-size:13px">${esc(c.bloque||"–")}</span><span style="flex:1;min-width:0;cursor:pointer" data-act="vercasa" data-id="${c.id}"><b>${c.bloque?"Bloque "+esc(c.bloque)+" · ":""}Casa ${esc(c.numero)}</b>${c.demo?' <span class="muted small">(ejemplo)</span>':""}<br><span class="muted small num">${n} ${n===1?"trabajo":"trabajos"}</span></span><button class="btn btn-dark btn-sm" data-act="vercasa" data-id="${c.id}">Ver</button>${isAdmin()&&!readOnly?`<button class="btn btn-ghost btn-sm" data-act="editcasa" data-id="${c.id}">Editar</button><button class="btn btn-danger btn-sm" data-act="delcasa" data-id="${c.id}">Eliminar</button>`:""}</div>`}).join("")}</div>`;
     h+=`</div>`;
   });
   return h+`</div>`;
@@ -1069,6 +1069,7 @@ function openSheet(s){sheet=s;const L=document.getElementById("layer");let body=
   else if(s.kind==="drawer")body=sheetDrawer();
   else if(s.kind==="avisos")body=sheetAvisos();
   else if(s.kind==="editcasa")body=sheetEditCasa(s);
+  else if(s.kind==="vercasa")body=sheetVerCasa(s);
   else if(s.kind==="editcondo")body=sheetEditCondo(s);
   else if(s.kind==="edittrab")body=sheetEditTrab(s);
   else if(s.kind==="duracion")body=sheetDuracion(s);
@@ -1853,6 +1854,36 @@ function sheetEditTrab(s){const t=trab(s.id);if(!t)return head("Trabajador");ret
   <div class="field"><label for="et-mail">Correo para iniciar sesión</label><input id="et-mail" class="in" type="email" inputmode="email" autocapitalize="none" placeholder="nombre@adelante.cr" value="${esc(t.email||"")}"></div>
   ${S.supa?`<div class="alert info">El trabajador entra con este correo. Créelo también en Supabase → Authentication → Users (con "Auto Confirm User") y dele la contraseña.</div>`:""}
   <button class="btn btn-dark" data-act="savetrab" data-id="${t.id}">Guardar</button></div>`}
+// ---------- ficha de la casa: datos e historial de trabajos ----------
+function sheetVerCasa(s){
+  const c=casa(s.id);if(!c)return head("Casa eliminada");
+  const ts=S.tareas.filter(t=>t.casaId===c.id);
+  // una entrada por trabajo: el equipo de un día y los días de una obra se juntan
+  const grupos=new Map();ts.forEach(t=>{const k=t.serie||t.grupo||t.id;if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(t)});
+  const abierto=x=>x.estado==="programada"||x.estado==="por_confirmar";
+  const items=[...grupos.values()].map(ms=>{
+    ms.sort((a,b)=>(a.inicio||"")<(b.inicio||"")?-1:1);
+    const vivos=ms.filter(x=>x.estado!=="cancelada"),base=vivos.length?vivos:ms;
+    const t=base.find(abierto)||base[0];
+    const est=base.some(abierto)?t.estado:base.every(x=>x.estado==="finalizada")?"finalizada":base.some(x=>x.estado==="pendiente")?"pendiente":t.estado;
+    const dias=[...new Set(base.filter(x=>x.inicio).map(x=>x.inicio.slice(0,10)))].sort();
+    const ult=ms.map(x=>x.inicio||x.creada||"").sort().pop();
+    return {t,est,dias,ult,nota:base.map(x=>x.nota).filter(Boolean).pop()||""};
+  }).sort((a,b)=>a.ult<b.ult?1:-1);
+  const abiertas=items.filter(i=>i.est==="programada"||i.est==="por_confirmar");
+  const cuenta=e=>items.filter(i=>i.est===e).length;
+  const reps=S.reportes.filter(r=>r.casaId===c.id);
+  const fila=it=>{const t=it.t,est=it.est,d=parse(t.inicio);
+    const cuando=it.dias.length>1?`${fCorta(parse(it.dias[0]+"T00:00"))} – ${fCorta(parse(it.dias[it.dias.length-1]+"T00:00"))} · ${it.dias.length} días`:d?`${fCorta(d)} ${d.getFullYear()!==new Date().getFullYear()?d.getFullYear()+" ":""}· ${hhmm(d)}`:"Fecha por definir";
+    const nota=it.nota;
+    return `<button class="opt" style="text-align:left;width:100%;align-items:flex-start" data-act="det" data-id="${t.id}"><span style="min-width:0"><b>${esc(t.tipo)}</b><br><span class="muted small">${cuando} · ${esc(enEquipo(t)?equipoTxt(t):(trab(t.trabajadorId)?.nombre||"Sin asignar"))}</span>${nota?`<br><span class="small">${esc(nota.length>90?nota.slice(0,90)+"…":nota)}</span>`:t.motivo&&est==="cancelada"?`<br><span class="small muted">Motivo: ${esc(t.motivo)}</span>`:""}</span><span class="pill st-${est}" style="font-size:11px;padding:1px 8px;flex:none">${ESTADO[est]}</span></button>`};
+  return head(esc(casaTxt(c)),c.demo?"Casa de ejemplo":"")+`<div class="stack">
+  <div class="card"><dl class="kv">${c.propietario?`<dt>Propietario</dt><dd>${esc(c.propietario)}</dd>`:""}${c.telefono?`<dt>Teléfono</dt><dd>${esc(c.telefono)}</dd>`:""}${c.fechaEntrega?`<dt>Entrega</dt><dd>${esc(c.fechaEntrega)}</dd>`:""}<dt>Trabajos</dt><dd>${items.length} en total · ${cuenta("finalizada")} finalizados${cuenta("pendiente")?` · ${cuenta("pendiente")} pendientes`:""}${abiertas.length?` · ${abiertas.length} programados`:""}${cuenta("cancelada")?` · ${cuenta("cancelada")} cancelados`:""}</dd></dl></div>
+  ${isAdmin()&&!readOnly?`<button class="btn btn-lime" data-act="nuevacasa" data-id="${c.id}">${I.plus} Nueva tarea para esta casa</button>`:""}
+  <div class="stack" style="gap:6px"><h3>Historial de trabajos</h3>${items.length?items.map(fila).join(""):`<div class="card muted small">Aún no hay trabajos registrados en esta casa.</div>`}</div>
+  ${reps.length?`<div class="stack" style="gap:6px"><h3>Reportes</h3>${reps.map(r=>`<button class="opt" style="text-align:left;width:100%" data-act="repver" data-id="${r.id}"><span><b>${esc(r.titulo)}</b><br><span class="muted small">${fCorta(new Date(r.creado))} · ${esc(trab(r.trabajadorId)?.nombre||"")}</span></span>${I.next}</button>`).join("")}</div>`:""}
+  </div>`;
+}
 function sheetEditCasa(s){const c=casa(s.id);if(!c)return head("Casa");return head(esc(casaTxt(c)))+`<div class="stack"><div class="two"><div class="field"><label for="ec-bl">Bloque</label>${bloqueInput("ec-bl",c.condominio,c.bloque)}</div><div class="field"><label for="ec-num">Número de casa</label><input id="ec-num" class="in num" inputmode="numeric" value="${esc(c.numero)}"></div></div><button class="btn btn-dark" data-act="savecasa" data-id="${c.id}">Guardar</button><button class="btn btn-danger" data-act="delcasa" data-id="${c.id}">Eliminar casa</button></div>`}
 function sheetDelCasa(s){const c=casa(s.id);if(!c)return head("Casa eliminada");
   const act=S.tareas.filter(t=>t.casaId===c.id&&(t.estado==="programada"||t.estado==="por_confirmar"));const hist=S.tareas.filter(t=>t.casaId===c.id).length;
@@ -1944,6 +1975,8 @@ document.addEventListener("click",async e=>{
     case "addcasas":await addCasas();break;
     case "addtrab":await addTrab();break;
     case "editcasa":openSheet({kind:"editcasa",id});break;
+    case "vercasa":openSheet({kind:"vercasa",id});break;
+    case "nuevacasa":openSheet({kind:"nueva",pre:{casaId:id}});break;
     case "savecasa":{const bl=document.getElementById("ec-bl").value.trim().toUpperCase(),num=document.getElementById("ec-num").value.trim();if(!bl||!num){toast("Indique bloque y número.");break}
       const c0=casa(id);if(S.casas.some(c=>c.id!==id&&c.condominio===c0.condominio&&String(c.bloque||"").toUpperCase()===bl&&String(c.numero)===num)){toast("Ya existe esa casa en "+c0.condominio+".");break}
       try{await patch("casas",id,{bloque:bl,numero:num});closeSheet();toast("Casa actualizada.")}catch(er){}break}
