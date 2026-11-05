@@ -75,7 +75,7 @@ a.btn{text-decoration:none}
 .logo-oscuro{display:none!important}
 /* ---------- modo web (computadora): menú fijo a la izquierda y contenido ancho; el celular no cambia ---------- */
 .side{display:none}
-@media (min-width:1024px){
+@media (min-width:860px){
   .shell{display:grid;grid-template-columns:256px minmax(0,1fr);min-height:100vh}
   .side{display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow:auto;background:#0E0F0C;color:#fff;padding:22px 14px 16px}
   .side-logo{display:flex;align-items:center;gap:10px;padding:0 8px 6px;cursor:pointer}
@@ -94,16 +94,23 @@ a.btn{text-decoration:none}
   .side-me:hover{background:rgba(255,255,255,.12)}
   .side-me svg{transform:rotate(-90deg);opacity:.7}
   .side-sub{font-size:12px;color:rgba(255,255,255,.6)}
-  .main .wrap{max-width:1280px;padding-left:36px;padding-right:36px;padding-top:26px}
+  .main .wrap,.main .wrap.wide{max-width:none;width:100%;margin:0;padding-left:36px;padding-right:36px;padding-top:26px}
   /* el menú y el logo ya están en la barra lateral */
   .shell .main .top .icon-btn[data-act="drawer"],.shell .main .top .icon-btn[data-act="home"],:root .shell .main .top .top-logo{display:none!important}
   .main .top{justify-content:flex-end;min-height:0}
   .main .dd{display:none}
-  .main .rem-list{grid-template-columns:repeat(auto-fill,minmax(420px,1fr));align-items:start}
+  .main .rem-list{grid-template-columns:repeat(auto-fill,minmax(400px,1fr));align-items:start}
   .main .daylist.rem-list{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
   .main .casas-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));column-gap:32px}
   .main .casas-list .list-item b{white-space:nowrap}
   .sheet{max-width:720px}
+}
+/* laptops con escala de Windows (125–150 %): menú un poco más angosto */
+@media (min-width:860px) and (max-width:1180px){
+  .shell{grid-template-columns:224px minmax(0,1fr)}
+  .main .wrap{padding-left:24px;padding-right:24px}
+  .main .rem-list{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+  .main .casas-list{grid-template-columns:1fr}
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-claro{display:none!important}:root:not([data-theme="light"]) .logo-oscuro{display:block!important}}
 :root[data-theme="dark"] .logo-claro{display:none!important}
