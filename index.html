@@ -73,6 +73,38 @@ a.btn{text-decoration:none}
 .top-logo{height:54px;width:auto;display:block;cursor:pointer;flex:none}
 .brand-logo{height:76px;width:auto;display:block;margin:0 auto 10px}
 .logo-oscuro{display:none!important}
+/* ---------- modo web (computadora): menú fijo a la izquierda y contenido ancho; el celular no cambia ---------- */
+.side{display:none}
+@media (min-width:1024px){
+  .shell{display:grid;grid-template-columns:256px minmax(0,1fr);min-height:100vh}
+  .side{display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow:auto;background:#0E0F0C;color:#fff;padding:22px 14px 16px}
+  .side-logo{display:flex;align-items:center;gap:10px;padding:0 8px 6px;cursor:pointer}
+  .side-logo img{height:58px;width:auto;flex:none}
+  .side-logo span{font:700 13px/1.25 var(--f-display);color:rgba(255,255,255,.72)}
+  .side-new{width:100%;justify-content:center;min-height:48px}
+  .side-nav{display:flex;flex-direction:column;gap:2px}
+  .side-sep{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45);padding:14px 12px 4px}
+  .side-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border:0;border-radius:12px;background:none;color:rgba(255,255,255,.86);font:600 14.5px var(--f-body);text-align:left;cursor:pointer}
+  .side-item svg{width:20px;height:20px;flex:none}
+  .side-item:hover{background:rgba(255,255,255,.08);color:#fff}
+  .side-item[aria-current="page"]{background:#B5D30F;color:#0E0F0C}
+  .side-badge{background:#B93A27;color:#fff;border-radius:999px;padding:0 7px;font-size:12px;margin-left:4px}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+  .side-me{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:#fff;text-align:left;cursor:pointer;font:500 14px var(--f-body)}
+  .side-me:hover{background:rgba(255,255,255,.12)}
+  .side-me svg{transform:rotate(-90deg);opacity:.7}
+  .side-sub{font-size:12px;color:rgba(255,255,255,.6)}
+  .main .wrap{max-width:1280px;padding-left:36px;padding-right:36px;padding-top:26px}
+  /* el menú y el logo ya están en la barra lateral */
+  .shell .main .top .icon-btn[data-act="drawer"],.shell .main .top .icon-btn[data-act="home"],:root .shell .main .top .top-logo{display:none!important}
+  .main .top{justify-content:flex-end;min-height:0}
+  .main .dd{display:none}
+  .main .rem-list{grid-template-columns:repeat(auto-fill,minmax(420px,1fr));align-items:start}
+  .main .daylist.rem-list{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  .main .casas-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));column-gap:32px}
+  .main .casas-list .list-item b{white-space:nowrap}
+  .sheet{max-width:720px}
+}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-claro{display:none!important}:root:not([data-theme="light"]) .logo-oscuro{display:block!important}}
 :root[data-theme="dark"] .logo-claro{display:none!important}
 :root[data-theme="dark"] .logo-oscuro{display:block!important}
@@ -740,7 +772,30 @@ function render(){
   else if(r.v==="casas")h=viewCasas();
   else if(r.v==="equipo")h=viewEquipo();
   else if(r.v==="reportes")h=viewReportes();
-  app.innerHTML=h;
+  // en computadora (pantalla ancha) el menú queda fijo a la izquierda; en el celular el CSS lo oculta
+  app.innerHTML=`<div class="shell"><aside class="side" aria-label="Menú principal">${sideNav(r.v)}</aside><div class="main">${h}</div></div>`;
+}
+function sideNav(v){
+  const it=(h,ico,txt,on)=>`<button class="side-item" data-act="go" data-h="${h}" ${on?'aria-current="page"':""}>${ico}<span>${txt}</span></button>`;
+  const t=modo!=="admin"?trab(modo):null;
+  const unread=t?S.avisos.filter(a=>a.trabajadorId===modo&&!a.leido).length:0;
+  return `<div class="side-logo" data-act="home" role="button" aria-label="Inicio"><img src="${LOGO_AD_W}" alt="Adelante"><span>Postventa<br>Ciudad del Valle</span></div>
+  ${isAdmin()&&!readOnly?`<button class="btn btn-lime side-new" data-act="nueva">${I.plus} Nueva tarea</button>`:""}
+  <nav class="side-nav">
+    ${it("",I.home,"Inicio",v==="inicio")}
+    <span class="side-sep">Programación</span>
+    ${it("dia",I.day,"Trabajos del día",v==="dia")}
+    ${it("semana",I.week,"Trabajos de la semana",v==="semana")}
+    ${it("mes",I.month,"Programados del mes",v==="mes")}
+    <span class="side-sep">Gestión</span>
+    ${isAdmin()?it("casas",I.home,"Casas",v==="casas")+it("equipo",I.team,"Equipo",v==="equipo"):""}
+    ${it("reportes",I.doc,isAdmin()?"Reportes":"Mis reportes",v==="reportes")}
+    ${isAdmin()?it("cita-demo",I.link,"Página del propietario",false):""}
+  </nav>
+  <div class="side-foot">
+    ${t?`<button class="side-item" data-act="avisos">${I.bell}<span>Avisos${unread?` <b class="side-badge">${unread}</b>`:""}</span></button>`:""}
+    <button class="side-me" data-act="drawer" aria-label="Más opciones y ajustes">${t?`<span class="avatar" style="background:${color(t.id)}">${esc(initials(t.nombre))}</span>`:`<span class="avatar" style="background:var(--lime);color:#0E0F0C">AD</span>`}<span style="flex:1;min-width:0"><b>${esc(t?t.nombre:"Administración")}</b><br><span class="side-sub">Ajustes y más opciones</span></span>${I.chev}</button>
+  </div>`;
 }
 function banners(){
   let b="";
@@ -949,7 +1004,7 @@ function viewCasas(){
     const cs=S.casas.filter(c=>c.condominio===cn);
     h+=`<div class="section"><div class="section-head"><h2>${esc(cn)}</h2><span class="row" style="gap:12px;align-items:center"><span class="muted small num">${cs.length} casas</span>${adm?`<button class="link small" data-act="editcondo" data-n="${esc(cn)}">Renombrar</button>${cs.length?"":`<button class="link small" style="color:var(--danger)" data-act="delcondo" data-n="${esc(cn)}">Eliminar</button>`}`:""}</span></div>`;
     if(!cs.length)h+=`<div class="card muted small">Aún no hay casas registradas.</div>`;
-    else h+=`<div class="card" style="padding:4px 18px">${cs.map(c=>{const n=S.tareas.filter(t=>t.casaId===c.id&&t.estado!=="cancelada").length;return `<div class="list-item"><span class="dd-ico" style="width:38px;height:38px;border-radius:10px;font-weight:800;font-size:13px">${esc(c.bloque||"–")}</span><span style="flex:1;min-width:0;cursor:pointer" data-act="vercasa" data-id="${c.id}"><b>${c.bloque?"Bloque "+esc(c.bloque)+" · ":""}Casa ${esc(c.numero)}</b>${c.demo?' <span class="muted small">(ejemplo)</span>':""}<br><span class="muted small num">${n} ${n===1?"trabajo":"trabajos"}</span></span><button class="btn btn-dark btn-sm" data-act="vercasa" data-id="${c.id}">Ver</button>${isAdmin()&&!readOnly?`<button class="btn btn-ghost btn-sm" data-act="editcasa" data-id="${c.id}">Editar</button><button class="btn btn-danger btn-sm" data-act="delcasa" data-id="${c.id}">Eliminar</button>`:""}</div>`}).join("")}</div>`;
+    else h+=`<div class="card casas-list" style="padding:4px 18px">${cs.map(c=>{const n=S.tareas.filter(t=>t.casaId===c.id&&t.estado!=="cancelada").length;return `<div class="list-item"><span class="dd-ico" style="width:38px;height:38px;border-radius:10px;font-weight:800;font-size:13px">${esc(c.bloque||"–")}</span><span style="flex:1;min-width:0;cursor:pointer" data-act="vercasa" data-id="${c.id}"><b>${c.bloque?"Bloque "+esc(c.bloque)+" · ":""}Casa ${esc(c.numero)}</b>${c.demo?' <span class="muted small">(ejemplo)</span>':""}<br><span class="muted small num">${n} ${n===1?"trabajo":"trabajos"}</span></span><button class="btn btn-dark btn-sm" data-act="vercasa" data-id="${c.id}">Ver</button>${isAdmin()&&!readOnly?`<button class="btn btn-ghost btn-sm" data-act="editcasa" data-id="${c.id}">Editar</button><button class="btn btn-danger btn-sm" data-act="delcasa" data-id="${c.id}">Eliminar</button>`:""}</div>`}).join("")}</div>`;
     h+=`</div>`;
   });
   return h+`</div>`;
